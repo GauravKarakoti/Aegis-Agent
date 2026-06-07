@@ -9,7 +9,6 @@ import { ethers } from "ethers";
 
 const RPC_URLS: Record<string, string> = {
   sepolia: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
-  holesky: process.env.HOLESKY_RPC_URL || "https://ethereum-holesky-rpc.publicnode.com",
   mainnet: process.env.MAINNET_RPC_URL || "https://eth.llamarpc.com",
 };
 
