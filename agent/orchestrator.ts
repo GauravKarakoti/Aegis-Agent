@@ -56,7 +56,7 @@ export class AgentOrchestrator {
 
   constructor(config: OrchestratorConfig) {
     this.groq = new Groq({ apiKey: config.apiKey });
-    this.model = config.model || "llama-3.3-70b-versatile";
+    this.model = config.model || "llama-3.1-8b-instant";
     this.txState = this.initialTxState();
 
     this.toolImplementations = {

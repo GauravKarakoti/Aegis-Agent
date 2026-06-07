@@ -17,6 +17,7 @@ export const broadcastRouter = Router();
 broadcastRouter.post("/broadcast", async (req: Request, res: Response) => {
   try {
     const parsed = BroadcastRequestSchema.safeParse(req.body);
+    console.log("[Broadcast] Received request:", req.body);
     if (!parsed.success) {
       res.status(400).json({
         success: false,
@@ -30,6 +31,7 @@ broadcastRouter.post("/broadcast", async (req: Request, res: Response) => {
 
     // Validate the signed transaction
     let parsedTx: ethers.Transaction;
+    console.log("[Broadcast] Validating signed transaction...");
     try {
       parsedTx = ethers.Transaction.from(signedTxHex);
       if (!parsedTx.from) {
@@ -72,7 +74,7 @@ broadcastRouter.post("/broadcast", async (req: Request, res: Response) => {
         : network === "holesky"
           ? `https://holesky.etherscan.io/tx/${txHash}`
           : `https://sepolia.etherscan.io/tx/${txHash}`;
-
+    console.log(`[Broadcast] Explorer URL: ${explorerUrl}`);
     res.json({
       success: true,
       data: {

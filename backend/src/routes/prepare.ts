@@ -75,7 +75,6 @@ prepareRouter.post("/prepare", async (req: Request, res: Response) => {
     }
 
     const tx = {
-      from: fromAddress,
       to: recipient,
       value: amountWei,
       nonce,

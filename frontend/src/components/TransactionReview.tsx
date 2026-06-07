@@ -37,11 +37,15 @@ export function TransactionReview() {
   const setError = useTransactionStore((s) => s.setError);
   const setLedgerStatus = useTransactionStore((s) => s.setLedgerStatus);
 
-  const isPrepared = transaction.status !== "idle";
   const isAwaitingLedger = transaction.status === "awaiting_ledger";
   const isSigned = transaction.status === "signed";
-  const canPrepare = transaction.status === "idle";
-  const canSign = transaction.status === "preparing" || isPrepared;
+  
+  // FIX: Allow preparation when the agent has queued it up ("preparing")
+  const canPrepare = transaction.status === "idle" || transaction.status === "preparing";
+  
+  // FIX: Only allow signing AFTER prepare finishes and sets status to "awaiting_ledger"
+  const canSign = transaction.status === "awaiting_ledger";
+  
   const canBroadcast = isSigned;
   const isTerminal =
     transaction.status === "confirmed" || transaction.status === "failed";
@@ -62,6 +66,7 @@ export function TransactionReview() {
         transaction.amount,
         transaction.network
       );
+      console.log("Prepare API Response:", response.data);
       updateTransaction({
         unsignedTxHex: response.data.unsignedTxHex,
         gasEstimate: response.data.summary.gasEstimate,
@@ -82,6 +87,7 @@ export function TransactionReview() {
 
   const handleSign = async () => {
     console.log("[TransactionReview] Initiating Ledger signing process...");
+    console.log("Current transaction state:", transaction);
     if (!transaction.unsignedTxHex) {
       setError("No unsigned transaction to sign. Click Prepare first.");
       return;
