@@ -115,7 +115,7 @@ export function getToolDefinitions() {
               description: "Optional data hex string for contract interactions." 
             }
           },
-          required: ["recipient"] // Remove 'amount' from hard schema validation to handle variations gracefully
+          required: ["recipient"]
         }
       },
     },
