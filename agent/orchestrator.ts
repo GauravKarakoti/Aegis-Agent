@@ -1,8 +1,8 @@
 /**
- * Aegis - AI Agent Orchestrator
+ * Aegis - AI Agent Orchestrator (Groq Edition)
  *
  * The orchestrator processes natural language input from the user,
- * routes it through the OpenAI LLM with function-calling tools,
+ * routes it through the Groq LLM with function-calling tools,
  * and executes the tools in sequence to build, sign, and broadcast
  * Ethereum transactions.
  *
@@ -14,10 +14,9 @@
  * - AI CANNOT broadcast — that step requires user confirmation
  */
 
-import OpenAI from "openai";
+import Groq from "groq-sdk";
 import { getToolDefinitions, ToolName, ToolResult } from "./tools.js";
 import { connectDevice, getAddress, signTransaction } from "../lib/ledger/dmk.js";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { resolveENS as resolveENSFromProvider } from "../lib/ethers/provider.js";
 import { ethers } from "ethers";
 import { getProvider } from "../lib/ethers/provider.js";
@@ -28,9 +27,10 @@ interface OrchestratorConfig {
 }
 
 interface OrchestratorMessage {
-  role: "user" | "assistant" | "tool";
+  role: "user" | "assistant" | "tool" | "system";
   content: string;
   tool_call_id?: string;
+  tool_calls?: any[];
 }
 
 interface TransactionState {
@@ -48,15 +48,15 @@ interface TransactionState {
 }
 
 export class AgentOrchestrator {
-  private openai: OpenAI;
+  private groq: Groq;
   private model: string;
   private messages: OrchestratorMessage[] = [];
   private txState: TransactionState;
   private toolImplementations: Record<ToolName, (...args: any[]) => Promise<ToolResult>>;
 
   constructor(config: OrchestratorConfig) {
-    this.openai = new OpenAI({ apiKey: config.apiKey });
-    this.model = config.model || "gpt-4o-mini";
+    this.groq = new Groq({ apiKey: config.apiKey });
+    this.model = config.model || "llama-3.3-70b-versatile";
     this.txState = this.initialTxState();
 
     this.toolImplementations = {
@@ -128,22 +128,21 @@ Daily spending allowance: Max ${process.env.MAX_DAILY_ETH || "0.01"} ETH per tra
 
 Be concise and professional. Use tools as needed.`;
 
-    const response = await this.openai.chat.completions.create({
+    // Map internal history safely into Groq's expectations
+    const buildMessages = (): any[] => [
+      { role: "system", content: systemPrompt },
+      ...this.messages.map((m) => {
+        const msg: any = { role: m.role, content: m.content };
+        if (m.tool_call_id) msg.tool_call_id = m.tool_call_id;
+        if (m.tool_calls) msg.tool_calls = m.tool_calls;
+        return msg;
+      }),
+    ];
+
+    const response = await this.groq.chat.completions.create({
       model: this.model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...this.messages.map((m) => {
-          const msg: ChatCompletionMessageParam = {
-            role: m.role as ChatCompletionMessageParam["role"],
-            content: m.content,
-          } as ChatCompletionMessageParam;
-          if (m.tool_call_id) {
-            (msg as any).tool_call_id = m.tool_call_id;
-          }
-          return msg;
-        }),
-      ],
-      tools: getToolDefinitions(),
+      messages: buildMessages(),
+      tools: getToolDefinitions() as any,
       tool_choice: "auto",
     });
 
@@ -156,6 +155,7 @@ Be concise and professional. Use tools as needed.`;
       this.messages.push({
         role: "assistant",
         content: assistantContent,
+        tool_calls: replyMessage.tool_calls,
       });
 
       for (const toolCall of replyMessage.tool_calls) {
@@ -189,25 +189,17 @@ Be concise and professional. Use tools as needed.`;
       }
 
       // Get follow-up response after tool execution
-      const followUp = await this.openai.chat.completions.create({
+      const followUp = await this.groq.chat.completions.create({
         model: this.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...this.messages.map((m) => {
-          const msg: ChatCompletionMessageParam = {
-            role: m.role as ChatCompletionMessageParam["role"],
-            content: m.content,
-          } as ChatCompletionMessageParam;
-          if (m.tool_call_id) (msg as any).tool_call_id = m.tool_call_id;
-          return msg;
-        }),
-        ],
+        messages: buildMessages(),
       });
 
       const followReply = followUp.choices[0].message.content || "";
       this.messages.push({ role: "assistant", content: followReply });
       return { reply: followReply, transactionState: this.txState };
     }
+    
+    this.messages.push({ role: "assistant", content: replyMessage.content || "" });
     return { reply: replyMessage.content || "", transactionState: this.txState };
   }
 

@@ -27,7 +27,7 @@ Aegis is a production-quality proof-of-concept that demonstrates how AI agents c
 │  ┌─────────┐  ┌──────────────┐  ┌───────────────────────┐  │
 │  │  AI     │  │  Ledger DMK  │  │  Ethers Provider     │  │
 │  │  Agent  │──│  Integration │  │  (Sepolia RPC)        │  │
-│  │(OpenAI) │  │              │  │                       │  │
+│  │(Groq) │  │              │  │                       │  │
 │  └─────────┘  └──────┬───────┘  └───────────────────────┘  │
 └───────────────────────┼─────────────────────────────────────┘
                         │
@@ -97,7 +97,7 @@ Aegis is a production-quality proof-of-concept that demonstrates how AI agents c
 | **Backend** | Node.js, TypeScript, Express |
 | **Blockchain** | ethers v6, Sepolia testnet |
 | **Ledger** | @ledgerhq/dmk, Ledger Wallet CLI, Speculos |
-| **AI** | OpenAI SDK (GPT-4o-mini), Function Calling |
+| **AI** | Groq SDK, Function Calling |
 | **State** | Zustand |
 | **Validation** | Zod |
 
@@ -180,7 +180,7 @@ aegis-agent/
 - **Node.js** 18+ (recommended: 20 LTS)
 - **pnpm**, **npm**, or **yarn**
 - **A Ledger device** (Nano S, Nano X, Nano S+, Stax) **or** Speculos emulator
-- **OpenAI API key** (for the AI agent)
+- **Groq API key** (for the AI agent)
 - **Ledger Wallet CLI** (optional, for CLI signing path)
 
 ### 1. Clone and Install Dependencies
@@ -211,15 +211,15 @@ cp .env.backend.example backend/.env
 cp .env.frontend.example frontend/.env.local
 ```
 
-### 3. Set Your OpenAI API Key
+### 3. Set Your Groq API Key
 
 Edit `backend/.env`:
 
 ```
-OPENAI_API_KEY=sk-your-actual-openai-api-key
+GROQ_API_KEY=sk-your-actual-groq-api-key
 ```
 
-> **Get a key**: https://platform.openai.com/api-keys
+> **Get a key**: https://console.groq.com/keys
 
 ---
 
@@ -427,7 +427,7 @@ const { txHash } = await broadcastSignedTx(signedTx);
 
 ## AI Agent Tool Architecture
 
-The AI agent uses OpenAI function calling with six tools:
+The AI agent uses Groq function calling with six tools:
 
 | Tool | Purpose | AI Can Call? |
 |------|---------|:---:|
@@ -624,6 +624,6 @@ MIT — For educational and hackathon demonstration purposes.
 ## Acknowledgments
 
 - [Ledger](https://www.ledger.com/) — Hardware security and DMK
-- [OpenAI](https://openai.com/) — AI agent capabilities
+- [Groq](https://groq.com/) — AI agent capabilities
 - [ethers.js](https://docs.ethers.org/) — Ethereum interaction library
 - [Safe](https://safe.global/) — Multisig architecture inspiration

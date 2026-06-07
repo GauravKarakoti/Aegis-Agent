@@ -45,10 +45,10 @@ export const BroadcastTransactionParams = z.object({
   network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
 });
 
-// ─── OpenAI Tool Definitions ──────────────────────────────────────────
+// ─── Groq Tool Definitions ──────────────────────────────────────────
 
 /**
- * Returns the OpenAI-compatible tool definitions
+ * Returns the Groq-compatible tool definitions
  * These are passed to the LLM as function/tool definitions
  */
 export function getToolDefinitions() {

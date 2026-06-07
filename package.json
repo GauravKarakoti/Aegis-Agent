@@ -7,14 +7,15 @@
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "typecheck": "cd backend && npx tsc --noEmit --skipLibCheck"
+    "typecheck": "cd backend && npx tsc --noEmit --skipLibCheck",
+    "speculos": "chmod +x ./scripts/run-speculos.sh && bash ./scripts/run-speculos.sh --docker"
   },
   "dependencies": {
     "@ledgerhq/hw-app-eth": "^6.39.0",
-    "@ledgerhq/hw-transport-node-hid": "^6.30.2",
     "@ledgerhq/hw-transport-http": "^6.30.2",
+    "@ledgerhq/hw-transport-node-hid": "^6.30.2",
     "ethers": "^6.13.5",
-    "openai": "^4.77.0",
+    "groq-sdk": "^1.2.1",
     "zod": "^3.24.1"
   }
 }

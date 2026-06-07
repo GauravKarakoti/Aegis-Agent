@@ -19,9 +19,9 @@ function getOrCreateOrchestrator(sessionId?: string): {
 } {
   const id = sessionId || "default";
   if (!orchestrators.has(id)) {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      throw new Error("OPENAI_API_KEY environment variable is not set");
+      throw new Error("GROQ_API_KEY environment variable is not set");
     }
     orchestrators.set(id, new AgentOrchestrator({ apiKey }));
   }
@@ -71,9 +71,9 @@ function getOrchestratorForSession(sessionId?: string): {
   const id = sessionId || "default";
 
   if (!orchestrators.has(id)) {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      throw new Error("OPENAI_API_KEY environment variable is not set. Set it in your .env file.");
+      throw new Error("GROQ_API_KEY environment variable is not set. Set it in your .env file.");
     }
     orchestrators.set(id, new AgentOrchestrator({ apiKey }));
   }
