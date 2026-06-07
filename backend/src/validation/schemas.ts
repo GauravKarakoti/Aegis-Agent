@@ -8,24 +8,24 @@ export const ChatRequestSchema = z.object({
 export const PrepareRequestSchema = z.object({
   recipient: z.string().min(1, "Recipient address or ENS is required"),
   amount: z.string().min(1, "Amount is required"),
-  network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
+  network: z.enum(["sepolia", "mainnet"]).default("sepolia"),
 });
 
 export const SignRequestSchema = z.object({
   txHash: z.string().min(1, "Transaction hash is required"),
   recipient: z.string().min(1),
   amount: z.string().min(1),
-  network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
+  network: z.enum(["sepolia", "mainnet"]).default("sepolia"),
   data: z.string().optional(),
 });
 
 export const BroadcastRequestSchema = z.object({
   signedTx: z.string().min(1, "Signed transaction hex is required"),
-  network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
+  network: z.enum(["sepolia", "mainnet"]).default("sepolia"),
 });
 
 export const AddressRequestSchema = z.object({
-  network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
+  network: z.enum(["sepolia", "mainnet"]).default("sepolia"),
 });
 
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;

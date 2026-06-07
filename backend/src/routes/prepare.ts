@@ -81,7 +81,7 @@ prepareRouter.post("/prepare", async (req: Request, res: Response) => {
       gasLimit: gasEstimate,
       maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits("20", "gwei"),
       maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits("1", "gwei"),
-      chainId: network === "mainnet" ? 1 : network === "holesky" ? 17000 : 11155111,
+      chainId: network === "mainnet" ? 1 : 11155111,
       data: "0x",
       type: 2 as const, // EIP-1559
     };

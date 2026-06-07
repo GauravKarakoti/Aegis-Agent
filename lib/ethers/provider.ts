@@ -2,7 +2,7 @@
  * Aegis - Ethers Provider Utilities
  *
  * Provides RPC providers and utility functions for interacting
- * with Ethereum networks (Sepolia, Holesky, Mainnet).
+ * with Ethereum networks (Sepolia, Mainnet).
  */
 
 import { ethers } from "ethers";
@@ -61,8 +61,7 @@ export async function lookupENS(address: string): Promise<string | null> {
 export function getNetworkName(chainId: number): string {
   const names: Record<number, string> = {
     1: "mainnet",
-    11155111: "sepolia",
-    17000: "holesky",
+    11155111: "sepolia"
   };
   return names[chainId] || `unknown(${chainId})`;
 }

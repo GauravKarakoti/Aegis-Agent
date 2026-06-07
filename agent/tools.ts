@@ -23,7 +23,7 @@ export const ResolveENSParams = z.object({
 export const BuildTransactionParams = z.object({
   recipient: z.string().describe("Recipient address (0x-prefixed hex)"),
   amount: z.string().describe("Amount in ETH (e.g., '0.005')"),
-  network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
+  network: z.enum(["sepolia", "mainnet"]).default("sepolia"),
   data: z.string().optional().describe("Optional calldata hex"),
 });
 
@@ -32,7 +32,7 @@ export const EstimateGasParams = z.object({
   to: z.string().describe("Recipient address"),
   value: z.string().describe("Value in wei"),
   data: z.string().optional().describe("Calldata hex"),
-  network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
+  network: z.enum(["sepolia", "mainnet"]).default("sepolia"),
 });
 
 export const RequestLedgerSignatureParams = z.object({
@@ -41,7 +41,7 @@ export const RequestLedgerSignatureParams = z.object({
 
 export const BroadcastTransactionParams = z.object({
   signedTxHex: z.string().describe("Signed transaction hex from Ledger"),
-  network: z.enum(["sepolia", "mainnet", "holesky"]).default("sepolia"),
+  network: z.enum(["sepolia", "mainnet"]).default("sepolia"),
 });
 
 // ─── Groq Tool Definitions ──────────────────────────────────────────
@@ -90,31 +90,33 @@ export function getToolDefinitions() {
       type: "function" as const,
       function: {
         name: "buildTransaction",
-        description: "Build an unsigned Ethereum transaction",
+        description: "Prepares an unsigned Ethereum transaction and estimates gas fees.",
         parameters: {
           type: "object",
           properties: {
-            recipient: {
-              type: "string",
-              description: "Recipient address (0x-prefixed hex)",
+            recipient: { 
+              type: "string", 
+              description: "The destination Ethereum address or resolved ENS address." 
             },
-            amount: {
-              type: "string",
-              description: "Amount in ETH (e.g., '0.005')",
+            amount: { 
+              type: "string", 
+              description: "The amount of ETH to send as a decimal string (e.g., '0.005')." 
             },
-            network: {
-              type: "string",
-              enum: ["sepolia", "mainnet", "holesky"],
-              description: "Network to use",
-              default: "sepolia",
+            value: { 
+              type: "string", 
+              description: "Alternative to amount: The transaction value directly in Wei string units." 
             },
-            data: {
-              type: "string",
-              description: "Optional calldata hex",
+            network: { 
+              type: "string", 
+              description: "The target network, e.g., 'sepolia' or 'mainnet'." 
             },
+            data: { 
+              type: "string", 
+              description: "Optional data hex string for contract interactions." 
+            }
           },
-          required: ["recipient", "amount"],
-        },
+          required: ["recipient"] // Remove 'amount' from hard schema validation to handle variations gracefully
+        }
       },
     },
     {
@@ -131,7 +133,7 @@ export function getToolDefinitions() {
             data: { type: "string" },
             network: {
               type: "string",
-              enum: ["sepolia", "mainnet", "holesky"],
+              enum: ["sepolia", "mainnet"],
               default: "sepolia",
             },
           },
@@ -170,7 +172,7 @@ export function getToolDefinitions() {
             },
             network: {
               type: "string",
-              enum: ["sepolia", "mainnet", "holesky"],
+              enum: ["sepolia", "mainnet"],
               default: "sepolia",
             },
           },

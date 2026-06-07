@@ -20,7 +20,6 @@ import { ethers } from "ethers";
 const SAFE_FACTORY_ADDRESSES: Record<string, string> = {
   mainnet: "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2",
   sepolia: "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2",
-  holesky: "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2",
 };
 
 // Placeholder ABI for Safe contract operations

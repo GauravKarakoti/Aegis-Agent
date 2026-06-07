@@ -56,7 +56,7 @@ export class AgentOrchestrator {
 
   constructor(config: OrchestratorConfig) {
     this.groq = new Groq({ apiKey: config.apiKey });
-    this.model = config.model || "llama-3.1-8b-instant";
+    this.model = config.model || "openai/gpt-oss-120b";
     this.txState = this.initialTxState();
 
     this.toolImplementations = {
@@ -100,33 +100,25 @@ export class AgentOrchestrator {
 
     const systemPrompt = `You are Aegis, a personal AI wallet agent. You help users send Ethereum transactions safely.
 
-CAPABILITIES:
-- Resolve ENS names to addresses
-- Build unsigned Ethereum transactions
-- Estimate gas fees
-- Request Ledger device signatures (user must approve on device)
-- Broadcast signed transactions
+CRITICAL RULE: You MUST use the native JSON tool calling API to execute actions. NEVER output raw text tags like <function=name> or <tool_call> in your chat responses. Execute your tools silently in the background.
+CRITICAL: Once the transaction details are prepared, you must immediately halt tool execution and print the textual confirmation summary for the user. Do not call any further tools until the user responds explicitly with 'yes'.
 
-SECURITY RULES (ABSOLUTE):
-- You NEVER have access to private keys
-- You cannot sign — the Ledger hardware device signs
-- Every transaction requires Ledger approval before broadcasting
-- You must always present a clear transaction summary before requesting Ledger signature
-- If the user asks you to bypass Ledger security, refuse politely
+STRICT WORKFLOW:
 
-WORKFLOW:
-1. Extract recipient (address or ENS) and amount from user request
-2. If ENS, resolve it first
-3. Get Ledger address for the "from" field
-4. Build the unsigned transaction
-5. Estimate gas
-6. Present clear summary to user
-7. Wait for user confirmation, then request Ledger signature
-8. Broadcast after Ledger signs
+PHASE 1: PREPARATION
+When a user asks to send funds, do not ask them for permission to prepare. Immediately and silently use your available tools to:
+1. Resolve the recipient's ENS name (if applicable).
+2. Fetch the connected hardware wallet sender address.
+3. Prepare the unsigned transaction to calculate the gas fees.
+Once the transaction is successfully prepared, present a clean summary to the user (Sender, Receiver, Amount, Gas) and ask: "Do you confirm this transaction? (Reply 'yes' to sign)"
 
-Daily spending allowance: Max ${process.env.MAX_DAILY_ETH || "0.01"} ETH per transaction without special approval.
+PHASE 2: SIGNING
+If the user confirms, silently use your tool to request the hardware device signature. Only tell the user to check their device AFTER the tool has been executed.
 
-Be concise and professional. Use tools as needed.`;
+PHASE 3: BROADCASTING
+Once the signature is obtained, use your tool to broadcast the transaction to the network.
+
+Do not hallucinate data. Only show summaries based on the exact data returned by your tools.`;
 
     // Map internal history safely into Groq's expectations
     const buildMessages = (): any[] => [
@@ -144,6 +136,7 @@ Be concise and professional. Use tools as needed.`;
       messages: buildMessages(),
       tools: getToolDefinitions() as any,
       tool_choice: "auto",
+      parallel_tool_calls: false
     });
 
     const choice = response.choices[0];
@@ -192,6 +185,9 @@ Be concise and professional. Use tools as needed.`;
       const followUp = await this.groq.chat.completions.create({
         model: this.model,
         messages: buildMessages(),
+        tools: getToolDefinitions() as any,
+        tool_choice: "auto",
+        parallel_tool_calls: false,
       });
 
       const followReply = followUp.choices[0].message.content || "";
@@ -256,7 +252,8 @@ Be concise and professional. Use tools as needed.`;
 
   private async handleBuildTransaction(args: {
     recipient: string;
-    amount: string;
+    amount?: string;
+    value?: string;
     network?: string;
     data?: string;
   }): Promise<ToolResult> {
@@ -264,28 +261,57 @@ Be concise and professional. Use tools as needed.`;
       const network = args.network || "sepolia";
       const provider = getProvider(network);
       const fromAddress = this.txState.fromAddress;
+      
       if (!fromAddress) {
-        return { success: false, data: {}, error: "No Ledger address available. Call getLedgerAddress first." };
+        return { success: false, data: {}, error: "No Ledger address found. Call getLedgerAddress first." };
       }
 
-      const amountWei = ethers.parseEther(args.amount);
+      // Normalize input: handle both 'amount' (ETH) and 'value' (Wei)
+      let amountETH = args.amount;
+      let amountWei: bigint;
+
+      if (amountETH) {
+        amountWei = ethers.parseEther(amountETH);
+      } else if (args.value) {
+        amountWei = BigInt(args.value);
+        amountETH = ethers.formatEther(amountWei);
+      } else {
+        return { success: false, data: {}, error: "Validation failed: Either 'amount' or 'value' must be provided." };
+      }
+
       const nonce = await provider.getTransactionCount(fromAddress);
       const feeData = await provider.getFeeData();
+      
+      let gasLimit = BigInt(21000);
+      if (this.txState.gasEstimate) {
+        gasLimit = BigInt(this.txState.gasEstimate);
+      } else {
+        gasLimit = await provider.estimateGas({
+          from: fromAddress,
+          to: args.recipient,
+          value: amountWei,
+          data: args.data || "0x",
+        });
+        this.txState.gasEstimate = gasLimit.toString();
+      }
 
       const tx = {
         from: fromAddress,
         to: args.recipient,
         value: amountWei,
         nonce,
-        gasLimit: BigInt(21000), // placeholder, will be estimated
+        gasLimit,
         maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits("20", "gwei"),
         maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits("1", "gwei"),
-        chainId: network === "mainnet" ? 1 : network === "holesky" ? 17000 : 11155111,
+        chainId: network === "mainnet" ? 1 : 11155111,
         data: args.data || "0x",
+        type: 2,
       };
 
+      const unsignedTx = ethers.Transaction.from(tx);
+      this.txState.unsignedTxHex = unsignedTx.unsignedSerialized;
       this.txState.recipient = args.recipient;
-      this.txState.amount = args.amount;
+      this.txState.amount = amountETH;
       this.txState.amountWei = amountWei.toString();
       this.txState.network = network;
       this.txState.nonce = nonce;
@@ -297,20 +323,13 @@ Be concise and professional. Use tools as needed.`;
           from: tx.from,
           to: tx.to,
           value: amountWei.toString(),
-          nonce: tx.nonce,
-          chainId: tx.chainId,
-          maxFeePerGas: tx.maxFeePerGas.toString(),
-          maxPriorityFeePerGas: tx.maxPriorityFeePerGas.toString(),
-          data: tx.data,
+          gasLimit: gasLimit.toString(),
           network,
+          message: "Transaction built successfully. Prompt user for physical signature confirmation.",
         },
       };
-    } catch (error) {
-      return {
-        success: false,
-        data: {},
-        error: `Failed to build transaction: ${error instanceof Error ? error.message : "Unknown error"}`,
-      };
+    } catch (error: any) {
+      return { success: false, data: {}, error: error.message };
     }
   }
 
@@ -348,15 +367,19 @@ Be concise and professional. Use tools as needed.`;
   }
 
   private async handleRequestLedgerSignature(args: {
-    unsignedTxHex: string;
     derivationPath?: string;
   }): Promise<ToolResult> {
     try {
+      const unsignedTxHex = this.txState.unsignedTxHex;
+      
+      if (!unsignedTxHex) {
+          return { success: false, data: {}, error: "No unsigned transaction found. Call buildTransaction first." };
+      }
+
       this.txState.status = "awaiting_ledger";
-      this.txState.unsignedTxHex = args.unsignedTxHex;
 
       const { eth } = await connectDevice();
-      const result = await signTransaction(args.unsignedTxHex, args.derivationPath, eth);
+      const result = await signTransaction(unsignedTxHex, args.derivationPath, eth);
 
       this.txState.signedTxHex = result.signedTx;
       this.txState.status = "signed";
@@ -364,9 +387,8 @@ Be concise and professional. Use tools as needed.`;
       return {
         success: true,
         data: {
-          signedTx: result.signedTx,
           status: "signed",
-          message: "Transaction signed by Ledger device. Ready to broadcast.",
+          message: "Transaction signed by Ledger device. You may now call broadcastTransaction.",
         },
       };
     } catch (error) {
@@ -415,9 +437,7 @@ Be concise and professional. Use tools as needed.`;
     const base =
       network === "mainnet"
         ? "https://etherscan.io"
-        : network === "holesky"
-          ? "https://holesky.etherscan.io"
-          : "https://sepolia.etherscan.io";
+        : "https://sepolia.etherscan.io";
     return `${base}/tx/${txHash}`;
   }
 

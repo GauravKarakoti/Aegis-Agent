@@ -17,8 +17,6 @@ export function formatExplorerUrl(
   const base =
     network === "mainnet"
       ? "https://etherscan.io"
-      : network === "holesky"
-        ? "https://holesky.etherscan.io"
-        : "https://sepolia.etherscan.io";
+      : "https://sepolia.etherscan.io";
   return `${base}/${type}/${hash}`;
 }
