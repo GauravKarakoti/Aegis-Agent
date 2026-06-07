@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useTransactionStore, type ChatMessage } from "@/store/transactionStore";
 import { api } from "@/lib/api";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export function ChatPanel() {
   const [input, setInput] = useState("");
@@ -192,15 +193,15 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         <div
           className={cn(
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-            isUser
-              ? "bg-blue-500/10 text-foreground"
-              : "glass text-foreground",
-            // Add the "prose" class here if you installed @tailwindcss/typography
+            isUser ? "bg-blue-500/10 text-foreground" : "glass text-foreground",
+            // The prose classes handle the typography styling
             "prose prose-sm dark:prose-invert max-w-none" 
           )}
         >
-          {/* Replace plain text rendering with ReactMarkdown */}
-          <ReactMarkdown>{message.content}</ReactMarkdown>
+          {/* 3. Add the remarkPlugins prop */}
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {message.content}
+          </ReactMarkdown>
         </div>
       </div>
     </div>

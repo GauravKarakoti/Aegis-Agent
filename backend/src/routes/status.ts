@@ -14,9 +14,10 @@ statusRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     let ledgerConnected = false;
     let ledgerType = "none";
+    let dmk: any = null; // Hold reference
 
     try {
-      const dmk = await connectDevice();
+      dmk = await connectDevice();
       ledgerConnected = true;
       ledgerType = process.env.SPECULOS_HOST ? "speculos" : "hardware";
     } catch {
@@ -25,6 +26,11 @@ statusRouter.get("/status", async (_req: Request, res: Response) => {
       if (devices.length > 0) {
         ledgerConnected = true;
         ledgerType = devices[0].type;
+      }
+    } finally {
+      // CRITICAL: Close the transport so the device isn't locked!
+      if (dmk && dmk.eth && dmk.eth.transport) {
+        await dmk.eth.transport.close();
       }
     }
 

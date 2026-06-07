@@ -15,6 +15,8 @@ import { connectDevice, signTransaction } from "../../../lib/ledger/dmk.js";
 export const signRouter = Router();
 
 signRouter.post("/sign", async (req: Request, res: Response) => {
+  let ethApp: any = null;
+
   try {
     const parsed = SignRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -33,8 +35,9 @@ signRouter.post("/sign", async (req: Request, res: Response) => {
     console.log("[Sign] User MUST review and approve on Ledger device.");
     console.log(`[Sign] Unsigned tx: ${unsignedTxHex.substring(0, 20)}...`);
 
-    // Connect to Ledger and request signature
     const { eth } = await connectDevice();
+    ethApp = eth; // Save reference
+    
     const { signedTx } = await signTransaction(unsignedTxHex, derivationPathStr, eth);
 
     res.json({
@@ -53,5 +56,10 @@ signRouter.post("/sign", async (req: Request, res: Response) => {
       error: "Ledger signing failed. Is your device connected and the Ethereum app open?",
       details: error instanceof Error ? error.message : "Unknown error",
     });
+  } finally {
+    // CRITICAL: Always close the transport after signing is complete or fails
+    if (ethApp && ethApp.transport) {
+      await ethApp.transport.close();
+    }
   }
 });

@@ -191,7 +191,7 @@ DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. D
 
       replyMessage = response.choices[0].message;
     }
-    console.log(replyMessage);
+
     // Capture the final human-readable text after all tools finish
     const finalReply = replyMessage.content || "Transaction prepared successfully.";
     this.messages.push({ role: "assistant", content: finalReply });
