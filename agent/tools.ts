@@ -36,7 +36,6 @@ export const EstimateGasParams = z.object({
 });
 
 export const RequestLedgerSignatureParams = z.object({
-  unsignedTxHex: z.string().describe("Unsigned RLP-encoded transaction hex"),
   derivationPath: z.string().default("m/44'/60'/0'/0/0"),
 });
 
@@ -148,17 +147,12 @@ export function getToolDefinitions() {
         parameters: {
           type: "object",
           properties: {
-            unsignedTxHex: {
-              type: "string",
-              description: "Unsigned RLP-encoded transaction hex",
-            },
             derivationPath: {
               type: "string",
               description: "BIP32 derivation path",
               default: "m/44'/60'/0'/0/0",
             },
           },
-          required: ["unsignedTxHex"],
         },
       },
     },

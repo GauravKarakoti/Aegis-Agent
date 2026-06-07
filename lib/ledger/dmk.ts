@@ -26,6 +26,7 @@ const LEDGER_OPTIONS = {
 
 let transportInstance: any = null;
 let ethAppInstance: Eth | null = null;
+let cachedAddresses: Record<string, string> = {};
 
 /**
  * Initialize and connect to the Ledger device
@@ -58,16 +59,27 @@ export async function connectDevice(): Promise<{ transport: any; eth: Eth }> {
   return { transport, eth };
 }
 
-/**
- * Get Ethereum address from Ledger device
- * Uses Ethereum app to derive the address at m/44'/60'/0'/0/0
- */
 export async function getAddress(
   eth?: Eth,
   derivationPath: string = "m/44'/60'/0'/0/0"
 ): Promise<{ address: string; derivationPath: string }> {
+  
+  // 2. Return cached address immediately if it exists (prevents TransportLocked)
+  if (cachedAddresses[derivationPath]) {
+    return {
+      address: cachedAddresses[derivationPath],
+      derivationPath,
+    };
+  }
+
   const app = eth || (await connectDevice()).eth;
-  const result = await app.getAddress(derivationPath);
+  
+  // 3. Pass `false` as the second argument to explicitly bypass the device confirmation prompt.
+  // The signature is: getAddress(path, boolDisplay, boolChaincode)
+  const result = await app.getAddress(derivationPath, false, false);
+
+  // 4. Save the fetched address to the cache
+  cachedAddresses[derivationPath] = result.address;
 
   return {
     address: result.address,

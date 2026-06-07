@@ -71,9 +71,7 @@ broadcastRouter.post("/broadcast", async (req: Request, res: Response) => {
     const explorerUrl =
       network === "mainnet"
         ? `https://etherscan.io/tx/${txHash}`
-        : network === "holesky"
-          ? `https://holesky.etherscan.io/tx/${txHash}`
-          : `https://sepolia.etherscan.io/tx/${txHash}`;
+        : `https://sepolia.etherscan.io/tx/${txHash}`;
     console.log(`[Broadcast] Explorer URL: ${explorerUrl}`);
     res.json({
       success: true,
