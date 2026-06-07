@@ -85,10 +85,6 @@ export class AgentOrchestrator {
     };
   }
 
-  /**
-   * Process a natural language message from the user
-   * Returns the AI response and updated transaction state
-   */
   async processMessage(
     message: string,
     sessionId?: string
@@ -98,27 +94,24 @@ export class AgentOrchestrator {
   }> {
     this.messages.push({ role: "user", content: message });
 
+    // UPDATE 1: Redefine the system prompt for strict UI handoff
     const systemPrompt = `You are Aegis, a personal AI wallet agent. You help users send Ethereum transactions safely.
 
 CRITICAL RULE: You MUST use the native JSON tool calling API to execute actions. NEVER output raw text tags like <function=name> or <tool_call> in your chat responses. Execute your tools silently in the background.
-CRITICAL: Once the transaction details are prepared, you must immediately halt tool execution and print the textual confirmation summary for the user. Do not call any further tools until the user responds explicitly with 'yes'.
 
 STRICT WORKFLOW:
 
-PHASE 1: PREPARATION
-When a user asks to send funds, do not ask them for permission to prepare. Immediately and silently use your available tools to:
+PHASE 1: EXTRACTION & PREPARATION
+When a user asks to send funds, do not ask for permission to prepare. Immediately and silently use your available tools to:
 1. Resolve the recipient's ENS name (if applicable).
 2. Fetch the connected hardware wallet sender address.
-3. Prepare the unsigned transaction to calculate the gas fees.
-Once the transaction is successfully prepared, present a clean summary to the user (Sender, Receiver, Amount, Gas) and ask: "Do you confirm this transaction? (Reply 'yes' to sign)"
+3. Prepare the transaction using buildTransaction to calculate the gas fees and payload.
 
-PHASE 2: SIGNING
-If the user confirms, silently use your tool to request the hardware device signature. Only tell the user to check their device AFTER the tool has been executed.
+PHASE 2: UI HANDOFF (CRITICAL)
+Once the transaction is successfully prepared via buildTransaction, YOUR JOB IS DONE. 
+Present a clean summary to the user (Sender, Receiver, Amount, Gas) and explicitly instruct them: "Please use the Transaction Review panel on the right to sign this transaction with your Ledger device and broadcast it."
 
-PHASE 3: BROADCASTING
-Once the signature is obtained, use your tool to broadcast the transaction to the network.
-
-Do not hallucinate data. Only show summaries based on the exact data returned by your tools.`;
+DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. DO NOT ask the user to type "yes" in the chat. The user MUST click the UI buttons for physical security reasons.`;
 
     // Map internal history safely into Groq's expectations
     const buildMessages = (): any[] => [
@@ -315,7 +308,10 @@ Do not hallucinate data. Only show summaries based on the exact data returned by
       this.txState.amountWei = amountWei.toString();
       this.txState.network = network;
       this.txState.nonce = nonce;
-      this.txState.status = "preparing";
+      
+      // UPDATE 2: Change status from "preparing" to "awaiting_ledger" 
+      // so the UI immediately knows it's ready for the physical sign button
+      this.txState.status = "awaiting_ledger";
 
       return {
         success: true,
@@ -325,7 +321,7 @@ Do not hallucinate data. Only show summaries based on the exact data returned by
           value: amountWei.toString(),
           gasLimit: gasLimit.toString(),
           network,
-          message: "Transaction built successfully. Prompt user for physical signature confirmation.",
+          message: "Transaction prepared. Instruct user to sign via the UI.",
         },
       };
     } catch (error: any) {

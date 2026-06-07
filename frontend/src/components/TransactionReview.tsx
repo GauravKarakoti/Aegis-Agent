@@ -37,18 +37,14 @@ export function TransactionReview() {
   const setError = useTransactionStore((s) => s.setError);
   const setLedgerStatus = useTransactionStore((s) => s.setLedgerStatus);
 
-  const isAwaitingLedger = transaction.status === "awaiting_ledger";
-  const isSigned = transaction.status === "signed";
+  const hasIntent = Boolean(transaction.to && transaction.amount);
+  const isPrepared = Boolean(transaction.unsignedTxHex);
+  const isSigned = Boolean(transaction.signedTxHex);
+  const isTerminal = transaction.status === "confirmed" || transaction.status === "failed";
   
-  // FIX: Allow preparation when the agent has queued it up ("preparing")
-  const canPrepare = transaction.status === "idle" || transaction.status === "preparing";
-  
-  // FIX: Only allow signing AFTER prepare finishes and sets status to "awaiting_ledger"
-  const canSign = transaction.status === "awaiting_ledger";
-  
-  const canBroadcast = isSigned;
-  const isTerminal =
-    transaction.status === "confirmed" || transaction.status === "failed";
+  const canPrepare = hasIntent && !isPrepared;
+  const canSign = isPrepared && transaction.status === "awaiting_ledger";
+  const canBroadcast = isSigned && transaction.status === "signed";
 
   const handlePrepare = async () => {
     if (!transaction.to || !transaction.amount) {
@@ -309,64 +305,72 @@ export function TransactionReview() {
         )}
       </div>
 
-      {/* Actions */}
       <div className="border-t border-border px-6 py-4">
         {!isTerminal && (
           <div className="space-y-2">
+            
+            {/* 1. Prepare Button */}
             <button
               onClick={handlePrepare}
               disabled={!canPrepare || isSigning || isBroadcasting}
               className={cn(
                 "w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-all",
-                canPrepare
+                isPrepared
+                  ? "bg-green-500/10 text-green-400 border border-green-500/20 cursor-not-allowed"
+                  : canPrepare
                   ? "bg-primary text-primary-foreground hover:opacity-90"
                   : "bg-secondary text-muted-foreground cursor-not-allowed"
               )}
             >
-              Prepare Transaction
+              {isPrepared ? (
+                <span className="flex items-center justify-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" /> Transaction Prepared
+                </span>
+              ) : (
+                "Prepare Transaction"
+              )}
             </button>
 
+            {/* 2. Sign Button */}
             <button
               onClick={handleSign}
               disabled={!canSign || isSigning || isBroadcasting}
               className={cn(
                 "w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-all",
-                canSign && !isSigned
+                isSigned
+                  ? "bg-green-500/10 text-green-400 border border-green-500/20 cursor-not-allowed"
+                  : canSign
                   ? "border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                  : isSigned
-                    ? "bg-green-500/10 text-green-400 border border-green-500/20 cursor-not-allowed"
-                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : "bg-secondary text-muted-foreground cursor-not-allowed"
               )}
             >
               {isSigning ? (
                 <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Waiting for Ledger...
+                  <Loader2 className="h-4 w-4 animate-spin" /> Waiting for Ledger...
                 </span>
               ) : isSigned ? (
                 <span className="flex items-center justify-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Signed by Ledger
+                  <CheckCircle2 className="h-4 w-4" /> Signed by Ledger
                 </span>
               ) : (
                 "Request Ledger Signature"
               )}
             </button>
 
+            {/* 3. Broadcast Button */}
             <button
               onClick={handleBroadcast}
               disabled={!canBroadcast || isBroadcasting}
               className={cn(
                 "w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-all",
                 canBroadcast
-                  ? "bg-green-500 text-white hover:bg-green-600"
+                  ? "bg-primary text-primary-foreground hover:opacity-90"
                   : "bg-secondary text-muted-foreground cursor-not-allowed"
               )}
             >
               {isBroadcasting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Broadcasting...
+                  <Loader2 className="h-4 w-4 animate-spin" /> Broadcasting...
                 </span>
               ) : (
                 "Broadcast Transaction"
