@@ -9,10 +9,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, AlertCircle, Cpu } from "lucide-react";
+import { Send, Bot, User, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTransactionStore, type ChatMessage } from "@/store/transactionStore";
 import { api } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
 
 export function ChatPanel() {
   const [input, setInput] = useState("");
@@ -193,10 +194,13 @@ function ChatBubble({ message }: { message: ChatMessage }) {
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
             isUser
               ? "bg-blue-500/10 text-foreground"
-              : "glass text-foreground"
+              : "glass text-foreground",
+            // Add the "prose" class here if you installed @tailwindcss/typography
+            "prose prose-sm dark:prose-invert max-w-none" 
           )}
         >
-          {message.content}
+          {/* Replace plain text rendering with ReactMarkdown */}
+          <ReactMarkdown>{message.content}</ReactMarkdown>
         </div>
       </div>
     </div>

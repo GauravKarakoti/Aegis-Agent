@@ -34,6 +34,7 @@ broadcastRouter.post("/broadcast", async (req: Request, res: Response) => {
     console.log("[Broadcast] Validating signed transaction...");
     try {
       parsedTx = ethers.Transaction.from(signedTxHex);
+      console.log("[Broadcast] Parsed transaction:", parsedTx);
       if (!parsedTx.from) {
         res.status(400).json({
           success: false,
