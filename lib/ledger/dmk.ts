@@ -13,7 +13,8 @@
  * packages so the rest of the application uses a consistent API.
  */
 
-import Eth from "@ledgerhq/hw-app-eth";
+import Eth, { ledgerService } from "@ledgerhq/hw-app-eth";
+import { ethers } from "ethers";
 import Transport from "@ledgerhq/hw-transport-node-hid";
 import SpeculosTransport from "@ledgerhq/hw-transport-node-speculos";
 
@@ -87,14 +88,6 @@ export async function getAddress(
   };
 }
 
-/**
- * Sign a transaction using the Ledger device
- * The user MUST review and approve on their Ledger
- *
- * @param unsignedTxHex - Unsigned transaction hex to sign
- * @param derivationPath - BIP32 derivation path
- * @returns Signed transaction hex
- */
 export async function signTransaction(
   unsignedTxHex: string,
   derivationPath: string = "m/44'/60'/0'/0/0",
@@ -105,17 +98,35 @@ export async function signTransaction(
   console.log("[Ledger] Requesting signature — awaiting Ledger approval...");
   console.log("[Ledger] User MUST review and confirm on their Ledger device.");
 
-  // Strip 0x prefix for signing
+  // Strip 0x prefix for Ledger hw-app-eth
   const txHex = unsignedTxHex.startsWith("0x") ? unsignedTxHex.slice(2) : unsignedTxHex;
+
+  // Resolve the transaction to fix the missing "resolution" parameter warning
+  const resolution = await ledgerService.resolveTransaction(txHex, {}, {});
 
   const result = await app.signTransaction(
     derivationPath,
-    txHex
+    txHex,
+    resolution // Pass resolution here
   );
 
-  const signedTx = "0x" + result.v + result.r + result.s;
+  // 1. Parse the original unsigned transaction
+  const tx = ethers.Transaction.from(unsignedTxHex);
+
+  // 2. Attach the signature returned by the Ledger
+  tx.signature = {
+    r: "0x" + result.r,
+    s: "0x" + result.s,
+    // Ledger returns v as a hex string (e.g., "00", "01" for EIP-1559, or "1b", "1c" for legacy).
+    // Ethers v6 expects it as a number.
+    v: parseInt(result.v, 16) 
+  };
+
+  // 3. Serialize the full transaction + signature
+  const signedTx = tx.serialized;
+
   console.log("[Ledger] Transaction signed successfully.");
-  return { signedTx };
+  return { signedTx }; // Now returns the full RLP-encoded signed transaction
 }
 
 /**
