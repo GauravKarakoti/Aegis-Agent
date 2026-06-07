@@ -14,7 +14,7 @@ import {
   ArrowRight,
   Wallet,
   Network,
-  GasPump,
+  BaggageClaim,
   Shield,
   RefreshCw,
   Loader2,
@@ -81,6 +81,7 @@ export function TransactionReview() {
   };
 
   const handleSign = async () => {
+    console.log("[TransactionReview] Initiating Ledger signing process...");
     if (!transaction.unsignedTxHex) {
       setError("No unsigned transaction to sign. Click Prepare first.");
       return;
@@ -88,6 +89,7 @@ export function TransactionReview() {
 
     setIsSigning(true);
     try {
+      console.log("[TransactionReview] Requesting Ledger signature...");
       addMessage(
         "agent",
         "Requesting Ledger signature. Please approve the transaction on your Ledger device..."
@@ -254,7 +256,7 @@ export function TransactionReview() {
 
             {/* Gas */}
             <DetailRow
-              icon={<GasPump className="h-4 w-4" />}
+              icon={<BaggageClaim className="h-4 w-4" />}
               label="Gas Estimate"
               value={
                 transaction.gasEstimate

@@ -15,7 +15,7 @@
 
 import Eth from "@ledgerhq/hw-app-eth";
 import Transport from "@ledgerhq/hw-transport-node-hid";
-import getHttpTransport from "@ledgerhq/hw-transport-http";
+import SpeculosTransport from "@ledgerhq/hw-transport-node-speculos";
 
 const LEDGER_OPTIONS = {
   useSpeculos: !!process.env.SPECULOS_HOST,
@@ -39,11 +39,11 @@ export async function connectDevice(): Promise<{ transport: any; eth: Eth }> {
   let transport;
 
   if (LEDGER_OPTIONS.useSpeculos) {
-    const speculosUrl = `http://${LEDGER_OPTIONS.speculosHost}:${LEDGER_OPTIONS.speculosApduPort}`;
-    console.log(`[Ledger] Connecting to Speculos at ${speculosUrl}`);
-
-    const TransportHttp = getHttpTransport(speculosUrl);
-    transport = await TransportHttp.open(speculosUrl);
+    console.log(`[Ledger] Connecting to Speculos TCP on port ${LEDGER_OPTIONS.speculosApduPort}`);
+    transport = await SpeculosTransport.open({
+      apduPort: LEDGER_OPTIONS.speculosApduPort,
+      host: LEDGER_OPTIONS.speculosHost
+    });
   } else {
     console.log("[Ledger] Waiting for hardware Ledger device (USB HID)...");
     console.log("[Ledger] Make sure your device is connected and unlocked.");

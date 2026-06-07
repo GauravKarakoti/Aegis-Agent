@@ -247,7 +247,7 @@ docker pull ghcr.io/ledgerhq/speculos
 ./scripts/run-speculos.sh --app ./path/to/ethereum.elf
 
 # Custom model and ports
-./scripts/run-speculos.sh --model stax --apdu-port 9999 --http-port 5000
+./scripts/run-speculos.sh --model stax --apdu-port 5000 --http-port 5000
 ```
 
 ### Speculos Seed
@@ -262,7 +262,7 @@ This gives you a deterministic address for testing. Change it via the `SPECULOS_
 # Check the HTTP API
 curl http://localhost:5000/
 
-# The APDU port should accept connections on 9999
+# The APDU port should accept connections on 5000
 ```
 
 ---

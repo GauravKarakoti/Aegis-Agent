@@ -116,8 +116,8 @@ if [[ "$USE_DOCKER" == true ]]; then
 
   MSYS_NO_PATHCONV=1 docker run --rm -it \
     -v "$ABS_APP_PATH:/app.elf" \
-    -p "$SPECULOS_APDU_PORT:9999" \
-    -p "$SPECULOS_HTTP_PORT:5000" \
+    -p "9999:9999" \
+    -p "5000:5000" \
     -e SPECULOS_SEED="$SPECULOS_SEED" \
     ghcr.io/ledgerhq/speculos \
     --model "$SPECULOS_MODEL" \
