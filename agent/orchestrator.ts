@@ -114,7 +114,6 @@ Present a clean summary to the user (Sender, Receiver, Amount, Gas) and explicit
 
 DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. DO NOT ask the user to type "yes" in the chat. The user MUST click the UI buttons for physical security reasons.`;
 
-    // Map internal history safely into Groq's expectations
     const buildMessages = (): any[] => [
       { role: "system", content: systemPrompt },
       ...this.messages.map((m) => {
@@ -125,7 +124,7 @@ DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. D
       }),
     ];
 
-    const response = await this.groq.chat.completions.create({
+    let response = await this.groq.chat.completions.create({
       model: this.model,
       messages: buildMessages(),
       tools: getToolDefinitions() as any,
@@ -133,11 +132,16 @@ DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. D
       parallel_tool_calls: false
     });
 
-    const choice = response.choices[0];
-    const replyMessage = choice.message;
+    let replyMessage = response.choices[0].message;
+    
+    // Set a safety limit to prevent infinite AI loops
+    let iterations = 0;
+    const MAX_ITERATIONS = 5;
 
-    // Handle tool calls
-    if (replyMessage.tool_calls && replyMessage.tool_calls.length > 0) {
+    // LOOP: Process all consecutive tool calls automatically
+    while (replyMessage.tool_calls && replyMessage.tool_calls.length > 0 && iterations < MAX_ITERATIONS) {
+      iterations++;
+      
       const assistantContent = replyMessage.content || "";
       this.messages.push({
         role: "assistant",
@@ -145,6 +149,7 @@ DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. D
         tool_calls: replyMessage.tool_calls,
       });
 
+      // Execute all tools requested in this step
       for (const toolCall of replyMessage.tool_calls) {
         const toolName = toolCall.function.name as ToolName;
         const args = JSON.parse(toolCall.function.arguments);
@@ -175,8 +180,8 @@ DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. D
         }
       }
 
-      // Get follow-up response after tool execution
-      const followUp = await this.groq.chat.completions.create({
+      // Fetch the next response after providing tool results back to the LLM
+      response = await this.groq.chat.completions.create({
         model: this.model,
         messages: buildMessages(),
         tools: getToolDefinitions() as any,
@@ -184,13 +189,14 @@ DO NOT call the requestLedgerSignature or broadcastTransaction tools yourself. D
         parallel_tool_calls: false,
       });
 
-      const followReply = followUp.choices[0].message.content || "";
-      this.messages.push({ role: "assistant", content: followReply });
-      return { reply: followReply, transactionState: this.txState };
+      replyMessage = response.choices[0].message;
     }
+
+    // Capture the final human-readable text after all tools finish
+    const finalReply = replyMessage.content || "Transaction prepared successfully.";
+    this.messages.push({ role: "assistant", content: finalReply });
     
-    this.messages.push({ role: "assistant", content: replyMessage.content || "" });
-    return { reply: replyMessage.content || "", transactionState: this.txState };
+    return { reply: finalReply, transactionState: this.txState };
   }
 
   // ─── Tool Implementations ─────────────────────────────────────────
